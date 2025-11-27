@@ -26,21 +26,10 @@ try:
     genai.configure(api_key=api_key)
     
     # --- ROBUST MODEL SELECTION ---
-    # We try specific versions first, then fallbacks.
-    # This prevents 404 errors if a specific alias isn't available in your region.
-    model = None
-    model_options = [
-        'gemini-1.5-flash-latest',  # Preferred: Fastest & Newest
-        'gemini-1.5-flash',         # Alias
-        'gemini-1.5-flash-001',     # specific version
-        'gemini-1.5-pro-latest',    # Fallback: High intelligence
-        'gemini-pro'                # Fallback: Legacy (most stable)
-    ]
-    
-    # We define the model globally, but we don't "test" it here to save startup time.
-    # We will handle 404s inside the agent functions.
-    # Defaulting to the most robust string:
-    model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    # Using the standard stable model names. 
+    # 'gemini-1.5-flash' is the safest default for the competition.
+    primary_model_name = 'gemini-1.5-flash'
+    model = genai.GenerativeModel(primary_model_name)
 
 except Exception as e:
     st.error(f"Configuration Error: {e}")
@@ -49,27 +38,31 @@ except Exception as e:
 
 # --- 2. Define Agents ---
 
-def get_gemini_response(model_instance, prompt, image=None):
+def get_gemini_response(prompt, image=None):
     """
-    Helper function to try generating content.
-    If the default model fails (404), it tries fallbacks.
+    Helper function to try generating content with fallback.
     """
     try:
+        # Try the primary model (Flash)
         if image:
-            return model_instance.generate_content([prompt, image])
+            return model.generate_content([prompt, image])
         else:
-            return model_instance.generate_content(prompt)
+            return model.generate_content(prompt)
+            
     except Exception as e:
-        # If the specific model we picked isn't found, try the fallback 'gemini-pro'
-        if "404" in str(e) or "not found" in str(e).lower():
-            fallback_model = genai.GenerativeModel('gemini-pro')
-            if image:
-                # Note: gemini-pro (legacy) handles images differently (gemini-pro-vision), 
-                # but let's try the modern 1.5-pro fallback first
-                fallback_model = genai.GenerativeModel('gemini-1.5-pro-latest')
-                return fallback_model.generate_content([prompt, image])
-            else:
-                return fallback_model.generate_content(prompt)
+        # If Flash fails (404 or Overload), try the stable Pro model
+        # We catch "404" (Not Found) and "429" (Overloaded)
+        if "404" in str(e) or "not found" in str(e).lower() or "429" in str(e):
+            try:
+                # Fallback to standard 1.5 Pro (No 'latest' suffix)
+                fallback_model = genai.GenerativeModel('gemini-1.5-pro')
+                if image:
+                    return fallback_model.generate_content([prompt, image])
+                else:
+                    return fallback_model.generate_content(prompt)
+            except Exception as inner_e:
+                # If even that fails, return the original error to help debug
+                raise e
         else:
             raise e
 
@@ -91,7 +84,7 @@ def agent_scout(image):
     **Visual Evidence:** [Brief description of what you see, e.g., yellow mottling, lesions]
     """
     try:
-        response = get_gemini_response(model, prompt, image)
+        response = get_gemini_response(prompt, image)
         return response.text
     except Exception as e:
         return f"Error in Scout Agent: {str(e)}\n\n*Tip: Check API Key or Model Availability.*"
@@ -113,7 +106,7 @@ def agent_researcher(diagnosis_text):
     Keep it practical and easy to understand.
     """
     try:
-        response = get_gemini_response(model, prompt)
+        response = get_gemini_response(prompt)
         return response.text
     except Exception as e:
         return f"Error in Researcher Agent: {str(e)}"
