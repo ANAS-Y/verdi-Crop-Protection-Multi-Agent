@@ -12,13 +12,11 @@ st.set_page_config(
 )
 
 # --- 1. Setup & Secrets Management ---
-# This tries to get the key from Streamlit Cloud Secrets, or local .env
 try:
-    # If running on Streamlit Cloud
+    # Try getting the key from Streamlit secrets (Cloud) or Environment (Local)
     if "GOOGLE_API_KEY" in st.secrets:
         api_key = st.secrets["GOOGLE_API_KEY"]
     else:
-        # If running locally
         api_key = os.getenv("GOOGLE_API_KEY")
 
     if not api_key:
@@ -26,7 +24,11 @@ try:
         st.stop()
     
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-pro-latest')
+    
+    # FIX: Changed from 'gemini-1.5-pro-latest' to 'gemini-1.5-flash'
+    # 'gemini-1.5-flash' is the most stable and fastest model for this competition.
+    # You can also try 'gemini-1.5-pro' if flash is too simple, but Flash is safer for errors.
+    model = genai.GenerativeModel('gemini-1.5-flash')
 
 except Exception as e:
     st.error(f"Configuration Error: {e}")
@@ -38,7 +40,7 @@ except Exception as e:
 def agent_scout(image):
     """
     Agent A: The Scout (Vision)
-    Analyzes the image using Gemini 1.5 Pro.
+    Analyzes the image using Gemini 1.5 Flash.
     """
     prompt = """
     You are an expert Agronomist specializing in African crops. 
@@ -53,8 +55,12 @@ def agent_scout(image):
     **Severity:** [Level]
     **Visual Evidence:** [Brief description of what you see, e.g., yellow mottling, lesions]
     """
-    response = model.generate_content([prompt, image])
-    return response.text
+    # Streamlit passes a PIL Image, Gemini accepts it directly
+    try:
+        response = model.generate_content([prompt, image])
+        return response.text
+    except Exception as e:
+        return f"Error in Scout Agent: {str(e)}"
 
 def agent_researcher(diagnosis_text):
     """
@@ -73,8 +79,11 @@ def agent_researcher(diagnosis_text):
     
     Keep it practical and easy to understand.
     """
-    response = model.generate_content(prompt)
-    return response.text
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"Error in Researcher Agent: {str(e)}"
 
 # --- 3. The UI Layout ---
 
@@ -132,4 +141,4 @@ with col2:
 
 # Footer
 st.markdown("---")
-st.caption("Powered by Google Gemini 1.5 Pro | Kaggle Agents Capstone")
+st.caption("Powered by Google Gemini 1.5 Flash | Kaggle Agents Capstone")
