@@ -24,12 +24,6 @@ try:
         st.stop()
     
     genai.configure(api_key=api_key)
-    
-    # --- ROBUST MODEL SELECTION ---
-    # Using the standard stable model names. 
-    # 'gemini-1.5-flash' is the safest default for the competition.
-    primary_model_name = 'gemini-1.5-flash'
-    model = genai.GenerativeModel(primary_model_name)
 
 except Exception as e:
     st.error(f"Configuration Error: {e}")
@@ -40,31 +34,51 @@ except Exception as e:
 
 def get_gemini_response(prompt, image=None):
     """
-    Helper function to try generating content with fallback.
+    Helper function that tries multiple model versions to find one that works.
+    Order: 1.5 Flash -> 1.5 Pro -> Legacy Pro (1.0)
     """
-    try:
-        # Try the primary model (Flash)
-        if image:
-            return model.generate_content([prompt, image])
-        else:
-            return model.generate_content(prompt)
+    # Define fallback lists based on task type (Vision vs Text)
+    if image:
+        # Multimodal models (Vision)
+        candidates = [
+            'gemini-1.5-flash', 
+            'gemini-1.5-pro', 
+            'gemini-pro-vision', # Legacy vision model
+            'gemini-1.5-flash-latest'
+        ]
+    else:
+        # Text-only models
+        candidates = [
+            'gemini-1.5-flash', 
+            'gemini-1.5-pro', 
+            'gemini-pro',       # Legacy text model
+            'gemini-1.5-flash-latest'
+        ]
+
+    last_error = None
+
+    for model_name in candidates:
+        try:
+            # Initialize the specific model
+            model = genai.GenerativeModel(model_name)
             
-    except Exception as e:
-        # If Flash fails (404 or Overload), try the stable Pro model
-        # We catch "404" (Not Found) and "429" (Overloaded)
-        if "404" in str(e) or "not found" in str(e).lower() or "429" in str(e):
-            try:
-                # Fallback to standard 1.5 Pro (No 'latest' suffix)
-                fallback_model = genai.GenerativeModel('gemini-1.5-pro')
-                if image:
-                    return fallback_model.generate_content([prompt, image])
-                else:
-                    return fallback_model.generate_content(prompt)
-            except Exception as inner_e:
-                # If even that fails, return the original error to help debug
-                raise e
-        else:
-            raise e
+            # Attempt generation
+            if image:
+                return model.generate_content([prompt, image])
+            else:
+                return model.generate_content(prompt)
+                
+        except Exception as e:
+            # If it fails, record error and loop to the next model
+            last_error = e
+            print(f"⚠️ Model {model_name} failed: {e}. Trying next...")
+            continue
+    
+    # If all candidates fail, raise the last error encountered
+    if last_error:
+        raise last_error
+    else:
+        raise Exception("Unknown error: No models available.")
 
 def agent_scout(image):
     """
