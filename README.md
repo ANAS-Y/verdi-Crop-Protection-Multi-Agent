@@ -1,4 +1,18 @@
-🌱 Verdi: The Autonomous Crop Protection AgentVerdi is a Multi-Agent System designed to help farmers in Nigeria and globally diagnose crop diseases in real-time.🚀 FeaturesAgent A (Scout): Uses Computer Vision (Gemini 1.5 Pro) to identify diseases from leaf photos.Agent B (Researcher): Formulates organic and chemical treatment plans.Agent C (Guardian): Generates alert warnings for neighboring farms.🛠️ Tech StackPythonStreamlitGoogle Gemini API📦 How to Run LocallyClone the repo.Install dependencies: pip install -r requirements.txtSet GOOGLE_API_KEY in your environment.Run: streamlit run app.py
+🌱 Verdi: The Autonomous Crop Protection Agent
+Verdi is a Multi-Agent System designed to help farmers in Nigeria and globally diagnose crop diseases in real-time.
+🚀 Features
+Agent A (Scout): Uses Computer Vision (Gemini 1.5 Pro) to identify diseases from leaf photos.
+Agent B (Researcher): Formulates organic and chemical treatment plans.
+Agent C (Guardian): Generates alert warnings for neighboring farms.
+🛠️ Tech Stack
+Python
+Streamlit
+Google Gemini API
+📦 How to Run Locally
+Clone the repo.
+Install dependencies: pip install -r requirements.txt
+Set GOOGLE_API_KEY in your environment.
+Run: streamlit run app.py
 ---
 
 ### **3. Deployment Steps (Step-by-Step)**
@@ -29,3 +43,5 @@
     * Add your Gemini API Key in this exact format:
         ```toml
         GOOGLE_API_KEY = "AIzaSyD-xxxxxxxxxxxxxxxxxxxxxxxx"
+
+
